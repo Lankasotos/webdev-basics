@@ -141,23 +141,35 @@ function update() {
 }
 
 /* ---------- 6. 夕阳跟随鼠标 ---------- */
-// 夕阳在 SVG 里的"家"位置(viewBox 坐标)和移动配置
+// 夕阳在 SVG 里的"家"位置(viewBox 坐标)
 const SUN_HOME = { x: 1080, y: 430 };
-const SUN_RANGE = 200;   // 鼠标移动能带动夕阳的最大偏移量(px)
 const SUN_SMOOTH = 0.05; // 平滑系数(0~1,越小越"拖尾")
 
 const sun = document.getElementById("sun");
-const sunPos = { ...SUN_HOME };    // 夕阳当前实际位置
-const sunTarget = { ...SUN_HOME }; // 夕阳想去的位置
+const sunPos = { ...SUN_HOME };    // 夕阳当前实际位置(viewBox 坐标)
+const sunTarget = { ...SUN_HOME }; // 夕阳想去的位置(viewBox 坐标)
+
+// 坐标系换算:鼠标坐标是 CSS 像素,夕阳在 SVG 的 viewBox 坐标系里
+// SVG 用 preserveAspectRatio="xMidYMid slice" 铺满屏幕:
+// 内容按比例放大(scale),多出的部分左右/上下裁掉,内容居中
+function cssToViewBox(mx, my) {
+  const VB_W = 1440;
+  const VB_H = 900;
+  const scale = Math.max(window.innerWidth / VB_W, window.innerHeight / VB_H);
+  const offsetX = (window.innerWidth - VB_W * scale) / 2;
+  const offsetY = (window.innerHeight - VB_H * scale) / 2;
+  return {
+    x: (mx - offsetX) / scale,
+    y: (my - offsetY) / scale,
+  };
+}
 
 function updateSun() {
   if (mouse.active) {
-    // 把鼠标位置换算成"相对屏幕中心"的归一化偏移(-1 ~ 1)
-    const nx = (mouse.x - window.innerWidth / 2) / (window.innerWidth / 2);
-    const ny = (mouse.y - window.innerHeight / 2) / (window.innerHeight / 2);
-    // 目标位置 = 家的位置 + 鼠标偏移 × 幅度
-    sunTarget.x = SUN_HOME.x + nx * SUN_RANGE;
-    sunTarget.y = SUN_HOME.y + ny * SUN_RANGE;
+    // 目标 = 鼠标指针所在的 viewBox 坐标 → 夕阳中心对齐指针
+    const v = cssToViewBox(mouse.x, mouse.y);
+    sunTarget.x = v.x;
+    sunTarget.y = v.y;
   } else {
     // 鼠标不在窗口内:夕阳缓缓回到"家"
     sunTarget.x = SUN_HOME.x;
