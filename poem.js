@@ -54,9 +54,10 @@ const mouse = { x: -9999, y: -9999, active: false };
 let chars = []; // 每个字:{ el, homeX, homeY, x, y, vx, vy, row }
 
 /* ---- 时光轴状态 ---- */
-let progress = 0;      // 太阳进度 0→1(0=最左/日升,1=最右/日落)
-let holding = false;   // 鼠标是否按住(接管太阳)
-let linesAlpha = [];   // 每行诗的当前透明度(随太阳位置变化)
+let progress = 0;      // 日月进度 0→1(0=日出,0.5=日落/月出,1=月落)
+let holding = false;   // 鼠标是否按住(接管天体)
+let controlTarget = null; // 'sun' | 'moon' —— 按下瞬间锁定要拖的天体
+let linesAlpha = [];   // 每行诗的当前透明度(随日月进度变化)
 
 /* ---------- 4. 第一步:算出装得下的字号 ---------- */
 // 思路:分别按"宽"和"高"算出一个最大字号,取较小者,保证两个方向都不溢出
@@ -209,24 +210,25 @@ function updateLinesOpacity() {
 }
 
 function updateSun(now) {
-  if (holding) {
-    // ① 鼠标按住:接管"当前当空的天体" —— 鼠标在上方半圆控制太阳,下方半圆控制月亮
+  if (holding && controlTarget) {
+    // ① 鼠标按住:拖动"按下瞬间锁定的天体"
     const v = cssToViewBox(mouse.x, mouse.y);
-    // 由鼠标位置反推角度 → 进度,松手后从对应位置继续自动走(无缝衔接)
-    // 注意与 orbitPoint 一致:y 轴向下,所以角度用 cy - v.y 计算
+    // 鼠标位置反推出该天体在轨道上的角度
+    // (与 orbitPoint 一致:y 轴向下,所以角度用 cy - v.y 计算)
     const angle = Math.atan2(SETTINGS.orbitCy - v.y, v.x - SETTINGS.orbitCx);
-    progress = ((angle / (Math.PI * 2)) + 1) % 1;
-    if (progress < 0.5) {
-      // 太阳当空:鼠标拖太阳,月亮在对径轨道上
+    if (controlTarget === "sun") {
+      // 拖太阳:太阳=鼠标,月亮在对径;进度 = 太阳角度
       sunTarget.x = v.x;
       sunTarget.y = v.y;
+      progress = ((angle / (Math.PI * 2)) + 1) % 1;
       const m = orbitPoint(progress, true);
       moonTarget.x = m.x;
       moonTarget.y = m.y;
     } else {
-      // 月亮当空:鼠标拖月亮,太阳在对径轨道上
+      // 拖月亮:月亮=鼠标,太阳在对径;进度 = 月亮角度 - π(月亮是太阳的对面)
       moonTarget.x = v.x;
       moonTarget.y = v.y;
+      progress = (((angle / (Math.PI * 2)) - 0.5) + 1) % 1;
       const s = orbitPoint(progress, false);
       sunTarget.x = s.x;
       sunTarget.y = s.y;
@@ -317,13 +319,16 @@ window.addEventListener("mousemove", (e) => {
   mouse.active = true;
 });
 window.addEventListener("mousedown", () => {
-  holding = true; // 按住鼠标:接管太阳
+  holding = true;
+  // 按下瞬间锁定:当前时间轴上是太阳值日就拖太阳,月亮值夜就拖月亮
+  controlTarget = progress < 0.5 ? "sun" : "moon";
 });
 window.addEventListener("mouseup", () => {
   if (holding) {
     holding = false;
+    controlTarget = null;
     // 关键:把计时起点倒推到"当前进度对应的时刻",而不是清零
-    // 这样松开后 elapsed 从当前进度接着算,太阳不跳变
+    // 这样松开后 elapsed 从当前进度接着算,天体不跳变
     startTime = performance.now() - progress * SETTINGS.sunCycle;
   }
 });
@@ -331,7 +336,8 @@ window.addEventListener("mouseleave", () => {
   mouse.active = false; // 鼠标离开窗口:排斥力消失,字回家
   if (holding) {
     holding = false;
-    // 离开时若正接管,同样续接进度,避免太阳跳回起点
+    controlTarget = null;
+    // 离开时若正接管,同样续接进度,避免天体跳回起点
     startTime = performance.now() - progress * SETTINGS.sunCycle;
   }
 });
