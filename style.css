@@ -122,6 +122,34 @@ body {
   margin-bottom: 0.35rem;
 }
 
+/* 联系方式链接 */
+.contact-link {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.contact-link:hover {
+  text-decoration: underline;
+}
+
+/* 作品集:留空占位(虚线框提示) */
+.projects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.project-placeholder {
+  flex: 1 1 200px;
+  border: 2px dashed #d5dbe5;
+  border-radius: 8px;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--color-muted);
+}
+
 /* ---- 表单控件(待办页面用) ---- */
 .form-row {
   display: flex;
