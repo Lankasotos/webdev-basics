@@ -1,21 +1,32 @@
 <!DOCTYPE html>
-<!-- 粒子诗 · 李贺《苦昼短》 学习要点:Canvas、getImageData 采样、粒子系统、动画循环 -->
+<!-- 文字聚散 · 李贺《苦昼短》 学习要点:DOM 元素、transform 动画、requestAnimationFrame、鼠标事件 -->
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>粒子诗 · 苦昼短</title>
+  <title>文字聚散 · 苦昼短</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    /* 本页覆盖共享样式:全屏画布、无滚动 */
+    /* 本页覆盖共享样式:深色背景、无滚动 */
     body {
       margin: 0;
       overflow: hidden;
       background: #10141f;
-    }
-    #stage {
-      display: block;
       cursor: crosshair;
+    }
+    /* 每个字是一个完整的 <span>,绝对定位后用 transform 移动 */
+    .char {
+      position: absolute;
+      top: 0;
+      left: 0;
+      font-family: "STKaiti", "KaiTi", "SimSun", "Microsoft YaHei", serif;
+      font-size: 40px;
+      color: #f5d76e;
+      line-height: 1;
+      user-select: none;
+      pointer-events: none; /* 字不挡鼠标 */
+      will-change: transform; /* 提示浏览器优化 transform 动画 */
+      text-shadow: 0 0 12px rgba(245, 215, 110, 0.35);
     }
     .hint {
       position: fixed;
@@ -26,7 +37,7 @@
       color: rgba(245, 215, 110, 0.55);
       font-size: 0.9rem;
       letter-spacing: 0.3em;
-      pointer-events: none; /* 提示文字不挡鼠标 */
+      pointer-events: none;
       z-index: 2;
     }
     .back {
@@ -48,9 +59,9 @@
   </style>
 </head>
 <body>
-  <canvas id="stage"></canvas>
-  <p class="hint">移动鼠标:文字散开 · 移开鼠标:文字聚拢</p>
-  <p class="back"><a href="index.html">← 返回首页</a></p>
+  <div id="stage"></div>
+  <p class="hint">移动鼠标:字被推开 · 移开鼠标:字回到诗句</p>
+  <p class="back"><a href="index.html">← 返回首页</a> · <a href="particle-poem.html">看粒子版</a></p>
   <script src="poem.js"></script>
 </body>
 </html>
