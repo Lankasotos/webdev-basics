@@ -114,24 +114,61 @@
         <stop offset="72%" stop-color="#c7503a"/>
         <stop offset="100%" stop-color="#f5a94e"/>
       </linearGradient>
+      <!-- 夜空渐变:月亮时段淡入,深蓝夜空 -->
+      <linearGradient id="nightGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0b1030"/>
+        <stop offset="100%" stop-color="#1a1440"/>
+      </linearGradient>
       <!-- 夕阳光晕:内亮外透 -->
       <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="#ffd98a" stop-opacity="0.95"/>
         <stop offset="55%" stop-color="#ff9d5c" stop-opacity="0.35"/>
         <stop offset="100%" stop-color="#ff9d5c" stop-opacity="0"/>
       </radialGradient>
+      <!-- 月光晕:冷白微蓝 -->
+      <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#dfe6ff" stop-opacity="0.9"/>
+        <stop offset="60%" stop-color="#9fb0e8" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#9fb0e8" stop-opacity="0"/>
+      </radialGradient>
     </defs>
 
     <!-- 天空 -->
     <rect width="1440" height="900" fill="url(#skyGrad)"/>
 
-    <!-- 夕阳:用 <g> 包住,JS 通过 transform 移动它 -->
+    <!-- 夜空层(默认透明,月亮时段由 JS 淡入) -->
+    <g id="night" opacity="0">
+      <rect width="1440" height="900" fill="url(#nightGrad)"/>
+      <g fill="#ffffff">
+        <circle cx="200" cy="120" r="1.6" opacity="0.8"/>
+        <circle cx="340" cy="80" r="1.2" opacity="0.6"/>
+        <circle cx="520" cy="160" r="2" opacity="0.9"/>
+        <circle cx="700" cy="90" r="1.3" opacity="0.7"/>
+        <circle cx="880" cy="140" r="1.8" opacity="0.85"/>
+        <circle cx="1050" cy="70" r="1.2" opacity="0.6"/>
+        <circle cx="1230" cy="130" r="1.6" opacity="0.8"/>
+        <circle cx="260" cy="240" r="1" opacity="0.5"/>
+        <circle cx="640" cy="260" r="1.4" opacity="0.7"/>
+        <circle cx="980" cy="230" r="1.1" opacity="0.55"/>
+        <circle cx="1300" cy="260" r="1.5" opacity="0.75"/>
+        <circle cx="120" cy="320" r="1.2" opacity="0.6"/>
+      </g>
+    </g>
+
+    <!-- 太阳:用 <g> 包住,JS 通过 transform 移动它 -->
     <g id="sun">
       <circle cx="1080" cy="430" r="230" fill="url(#sunGlow)"/>
       <circle cx="1080" cy="430" r="72" fill="#ffdf8e"/>
     </g>
 
-    <!-- 远山(两层,越远越浅) -->
+    <!-- 月亮:在太阳的直径对面,太阳落山时它升起 -->
+    <g id="moon">
+      <circle cx="720" cy="430" r="150" fill="url(#moonGlow)"/>
+      <circle cx="720" cy="430" r="44" fill="#eef0ff"/>
+      <circle cx="706" cy="418" r="36" fill="#ccd2ec" opacity="0.55"/>
+    </g>
+
+    <!-- 远山(两层,越远越浅;画在日月之后,遮挡落山的太阳) -->
     <path d="M0,640 L150,480 L320,590 L500,440 L680,610 L860,470 L1040,620 L1220,480 L1440,600 L1440,900 L0,900 Z"
           fill="#4a2a5e" opacity="0.9"/>
     <path d="M0,700 L180,560 L380,670 L600,510 L800,680 L1020,540 L1240,690 L1440,580 L1440,900 L0,900 Z"
@@ -161,7 +198,7 @@
   <div class="dim"></div>
 
   <div id="stage"></div>
-  <p class="hint">时光流转 · 按住鼠标:驾驭太阳 · 松开:继续流转 · 移开:诗句归位</p>
+  <p class="hint">日月轮转 · 按住鼠标:驾驭日月 · 松开:继续流转 · 移开:诗句归位</p>
   <p class="back"><a href="index.html">← 返回首页</a></p>
   <script src="poem.js"></script>
 </body>

@@ -24,13 +24,12 @@ const SETTINGS = {
   padTop: 80,          // 上方留白:给顶部提示文字
   padBottom: 70,       // 下方留白:给底部返回链接
 
-  // ---- 太阳时光轴 ----
-  sunCycle: 40000,     // 太阳从左到右走完一圈的毫秒数(越大越慢)
-  sunXMin: 150,        // 太阳轨迹最左(viewBox x)
-  sunXMax: 1290,       // 太阳轨迹最右(viewBox x)
-  sunBaseY: 640,       // 弧线基准 y(贴近地平线)
-  sunArc: 200,         // 弧线拱起高度:中间高、两端低(像日行轨迹)
-  sunFade: 0.07,       // 首尾淡入淡出:两端各占一圈的 7%,太阳落山后从左边重新"日出"
+  // ---- 日月轨道 ----
+  sunCycle: 40000,     // 太阳绕轨道走完一圈的毫秒数(越大越慢)
+  orbitCx: 720,        // 轨道圆心 x(viewBox 坐标,画面中央)
+  orbitCy: 760,        // 轨道圆心 y(偏下:圆的下半部分延伸到画面外/树林后)
+  orbitR: 460,         // 轨道半径:圆延伸到画面下部
+  sunFade: 0.07,       // 日/月出没时的淡入淡出范围(占一圈的比例)
   lineFade: 1.0,       // 每行诗淡化窗口(行距倍数;1.0 = 窗口与行距等宽,相邻行交叉淡化无缝)
 };
 
@@ -156,16 +155,21 @@ function update() {
   }
 }
 
-/* ---------- 6. 时光轴:太阳运动 + 诗句显隐 ---------- */
+/* ---------- 6. 日月轨道:太阳绕圈,月亮在直径对面,背景昼夜交替 ---------- */
 // 太阳在 SVG 里的"家"位置(viewBox 坐标):transform 以它为基准
 const SUN_HOME = { x: 1080, y: 430 };
+const MOON_HOME = { x: 720, y: 430 };
 const SUN_SMOOTH = 0.05; // 平滑系数(0~1,越小越"拖尾")
 
 const sun = document.getElementById("sun");
-const sunPos = { ...SUN_HOME };    // 太阳当前实际位置(viewBox 坐标)
-const sunTarget = { ...SUN_HOME }; // 太阳想去的位置(viewBox 坐标)
+const moon = document.getElementById("moon");
+const night = document.getElementById("night");
+const sunPos = { ...SUN_HOME };     // 太阳当前实际位置(viewBox 坐标)
+const moonPos = { ...MOON_HOME };   // 月亮当前实际位置
+const sunTarget = { ...SUN_HOME };  // 太阳想去的位置
+const moonTarget = { ...MOON_HOME }; // 月亮想去的位置
 
-// 坐标系换算:鼠标坐标是 CSS 像素,夕阳在 SVG 的 viewBox 坐标系里
+// 坐标系换算:鼠标坐标是 CSS 像素,日月在 SVG 的 viewBox 坐标系里
 // SVG 用 preserveAspectRatio="xMidYMid slice" 铺满屏幕:
 // 内容按比例放大(scale),多出的部分左右/上下裁掉,内容居中
 function cssToViewBox(mx, my) {
@@ -180,11 +184,13 @@ function cssToViewBox(mx, my) {
   };
 }
 
-// 根据进度(0~1)算出太阳的目标位置:沿"左低→中高→右低"的弧线走
-function sunTargetByProgress(p) {
+// 圆周轨道:进度 p(0~1)→ 角度(0~2π)→ 圆上一点
+// 太阳走满一圈;月亮始终在直径对面(角度 + π),所以日月永不相遇、轮流当空
+function orbitPoint(p, opposite = false) {
+  const angle = p * Math.PI * 2 + (opposite ? Math.PI : 0);
   return {
-    x: SETTINGS.sunXMin + p * (SETTINGS.sunXMax - SETTINGS.sunXMin),
-    y: SETTINGS.sunBaseY - Math.sin(p * Math.PI) * SETTINGS.sunArc,
+    x: SETTINGS.orbitCx + SETTINGS.orbitR * Math.cos(angle),
+    y: SETTINGS.orbitCy + SETTINGS.orbitR * Math.sin(angle),
   };
 }
 
@@ -194,7 +200,7 @@ function updateLinesOpacity() {
   const n = LINES.length;
   for (let i = 0; i < n; i++) {
     const center = (i + 0.5) / n;
-    const dist = Math.abs(progress - center); // 太阳进度离该行中心有多远
+    const dist = Math.abs(progress - center); // 日月进度离该行中心有多远
     const windowSize = SETTINGS.lineFade / n; // 该行完全可见的进度范围
     // 距离超过窗口就完全透明;在窗口内按距离线性渐变到 1
     linesAlpha[i] = Math.max(0, 1 - dist / windowSize);
@@ -207,35 +213,63 @@ function updateSun(now) {
     const v = cssToViewBox(mouse.x, mouse.y);
     sunTarget.x = v.x;
     sunTarget.y = v.y;
-    // 同步进度:松开鼠标后,太阳从当前位置继续自动走(无缝衔接)
-    progress = (v.x - SETTINGS.sunXMin) / (SETTINGS.sunXMax - SETTINGS.sunXMin);
+    // 由鼠标位置反推角度 → 进度,松手后从对应位置继续自动走(无缝衔接)
+    const angle = Math.atan2(v.y - SETTINGS.orbitCy, v.x - SETTINGS.orbitCx);
+    progress = ((angle / (Math.PI * 2)) + 1) % 1;
   } else {
-    // ② 自动模式:按当前进度算出弧线上的目标位置
-    const t = sunTargetByProgress(progress);
+    // ② 自动模式:按当前进度算出太阳在轨道上的位置
+    const t = orbitPoint(progress);
     sunTarget.x = t.x;
     sunTarget.y = t.y;
   }
+
+  // 月亮:永远在太阳的直径对面(太阳落山,月亮升起)
+  const m = orbitPoint(progress, true);
+  moonTarget.x = m.x;
+  moonTarget.y = m.y;
+
   // 平滑插值:每帧向目标靠近一小步,产生"缓缓跟随"而不是瞬间跳变
   sunPos.x += (sunTarget.x - sunPos.x) * SUN_SMOOTH;
   sunPos.y += (sunTarget.y - sunPos.y) * SUN_SMOOTH;
+  moonPos.x += (moonTarget.x - moonPos.x) * SUN_SMOOTH;
+  moonPos.y += (moonTarget.y - moonPos.y) * SUN_SMOOTH;
   // 把位置写回 SVG 的 transform(平移量 = 当前位置 - 家的位置)
   sun.setAttribute(
     "transform",
     `translate(${sunPos.x - SUN_HOME.x}, ${sunPos.y - SUN_HOME.y})`
   );
+  moon.setAttribute(
+    "transform",
+    `translate(${moonPos.x - MOON_HOME.x}, ${moonPos.y - MOON_HOME.y})`
+  );
 
-  // 首尾淡入淡出:进度接近 0(日出)或 1(日落)时太阳渐隐,
-  // 这样"圈末瞬移回起点"的跳变藏在暗处,衔接自然
+  // 昼夜背景:太阳当空(进度前半段)是黄昏,月亮当空(后半段)夜空渐显
+  // 淡入淡出范围用 sunFade,让昼夜切换与日升月落同步
   const fade = SETTINGS.sunFade;
+  // 太阳:日出(0附近)渐显,日落(0.5附近)渐隐,其余时间全亮
   let sunOpacity = 1;
-  if (progress < fade) {
-    sunOpacity = progress / fade;          // 日出:从透明渐显
-  } else if (progress > 1 - fade) {
-    sunOpacity = (1 - progress) / fade;    // 日落:渐隐至透明
+  if (progress < fade) sunOpacity = progress / fade;
+  else if (progress > 0.5 - fade && progress < 0.5) sunOpacity = (0.5 - progress) / fade;
+  else if (progress >= 0.5) sunOpacity = 0; // 太阳已落入地下,不可见
+  // 月亮:与太阳相反 —— 日落后(0.5附近)升起,日出前(1附近)落下
+  let moonOpacity = 0;
+  if (progress >= 0.5 && progress < 0.5 + fade) moonOpacity = (progress - 0.5) / fade;
+  else if (progress >= 0.5 + fade && progress < 1 - fade) moonOpacity = 1;
+  else if (progress >= 1 - fade) moonOpacity = (1 - progress) / fade;
+  // 夜空:月亮时段淡入(比月亮稍提前一点,营造暮色)
+  let nightOpacity = 0;
+  if (progress > 0.5 - fade && progress < 0.5 + fade) {
+    nightOpacity = (progress - (0.5 - fade)) / (fade * 2);
+  } else if (progress >= 0.5 + fade && progress < 1 - fade) {
+    nightOpacity = 1;
+  } else if (progress >= 1 - fade) {
+    nightOpacity = (1 - progress) / fade;
   }
   sun.setAttribute("opacity", sunOpacity);
+  moon.setAttribute("opacity", moonOpacity);
+  night.setAttribute("opacity", nightOpacity);
 
-  // 诗句透明度跟随太阳进度
+  // 诗句透明度跟随日月进度
   updateLinesOpacity();
 }
 
