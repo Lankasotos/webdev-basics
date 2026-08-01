@@ -84,12 +84,26 @@
       z-index: 3;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     }
-    .back {
+    /* 署名:作者与作品名,底部居中,低调不抢戏 */
+    .credit {
       position: fixed;
       bottom: 14px;
       left: 0;
       right: 0;
       text-align: center;
+      font-family: "STKaiti", "KaiTi", "SimSun", serif;
+      font-size: 1.05rem;
+      letter-spacing: 0.25em;
+      color: rgba(255, 233, 168, 0.85);
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+      z-index: 3;
+    }
+    /* 返回链接:挪到左下角,让位给署名 */
+    .back {
+      position: fixed;
+      bottom: 14px;
+      left: 16px;
       z-index: 3;
     }
     .back a {
@@ -207,6 +221,8 @@
 
   <div id="stage"></div>
   <p class="hint">日月轮转 · 按住鼠标:驾驭日月 · 松开:继续流转 · 移开:诗句归位</p>
+  <!-- 署名:作者与作品名,底部居中 -->
+  <p class="credit">李贺【唐】· 苦昼短</p>
   <p class="back"><a href="index.html">← 返回首页</a></p>
   <script src="poem.js"></script>
 </body>
