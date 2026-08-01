@@ -133,7 +133,7 @@ body {
   text-decoration: underline;
 }
 
-/* 作品集:留空占位(虚线框提示) */
+/* 作品集:项目卡片 */
 .projects {
   display: flex;
   flex-wrap: wrap;
@@ -141,13 +141,40 @@ body {
   margin-top: 1rem;
 }
 
-.project-placeholder {
-  flex: 1 1 200px;
-  border: 2px dashed #d5dbe5;
+.project-item {
+  flex: 1 1 260px;
+  background: var(--color-bg);
   border-radius: 8px;
-  padding: 2rem 1rem;
-  text-align: center;
+  padding: 1rem;
+  border-left: 4px solid var(--color-primary);
+}
+
+.project-item h3 {
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+  color: var(--color-text);
+}
+
+.project-item p {
+  font-size: 0.9rem;
   color: var(--color-muted);
+  margin-bottom: 0.5rem;
+}
+
+.project-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.project-links a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.project-links a:hover {
+  text-decoration: underline;
 }
 
 /* ---- 表单控件(待办页面用) ---- */
