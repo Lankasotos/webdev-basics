@@ -263,15 +263,22 @@ window.addEventListener("mousedown", () => {
 window.addEventListener("mouseup", () => {
   if (holding) {
     holding = false;
-    startTime = null; // 重置计时起点,松开后从当前位置继续自动走
+    // 关键:把计时起点倒推到"当前进度对应的时刻",而不是清零
+    // 这样松开后 elapsed 从当前进度接着算,太阳不跳变
+    startTime = performance.now() - progress * SETTINGS.sunCycle;
   }
 });
 window.addEventListener("mouseleave", () => {
   mouse.active = false; // 鼠标离开窗口:排斥力消失,字回家
-  holding = false;
-  startTime = null;
+  if (holding) {
+    holding = false;
+    // 离开时若正接管,同样续接进度,避免太阳跳回起点
+    startTime = performance.now() - progress * SETTINGS.sunCycle;
+  }
 });
 
 /* ---------- 10. 启动 ---------- */
 build();
-tick();
+// 用 requestAnimationFrame 首次调用 tick,让第一帧就拿到有效时间戳(now)
+// 若直接调 tick() 不带参数,now 为 undefined → 进度变 NaN → 太阳不动
+requestAnimationFrame(tick);
