@@ -30,6 +30,7 @@ const SETTINGS = {
   sunXMax: 1290,       // 太阳轨迹最右(viewBox x)
   sunBaseY: 640,       // 弧线基准 y(贴近地平线)
   sunArc: 200,         // 弧线拱起高度:中间高、两端低(像日行轨迹)
+  sunFade: 0.07,       // 首尾淡入淡出:两端各占一圈的 7%,太阳落山后从左边重新"日出"
   lineFade: 1.0,       // 每行诗淡化窗口(行距倍数;1.0 = 窗口与行距等宽,相邻行交叉淡化无缝)
 };
 
@@ -222,6 +223,17 @@ function updateSun(now) {
     "transform",
     `translate(${sunPos.x - SUN_HOME.x}, ${sunPos.y - SUN_HOME.y})`
   );
+
+  // 首尾淡入淡出:进度接近 0(日出)或 1(日落)时太阳渐隐,
+  // 这样"圈末瞬移回起点"的跳变藏在暗处,衔接自然
+  const fade = SETTINGS.sunFade;
+  let sunOpacity = 1;
+  if (progress < fade) {
+    sunOpacity = progress / fade;          // 日出:从透明渐显
+  } else if (progress > 1 - fade) {
+    sunOpacity = (1 - progress) / fade;    // 日落:渐隐至透明
+  }
+  sun.setAttribute("opacity", sunOpacity);
 
   // 诗句透明度跟随太阳进度
   updateLinesOpacity();
