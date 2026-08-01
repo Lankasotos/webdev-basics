@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!-- 学习要点:表单、事件绑定、DOM 渲染 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>待办清单 · webdev-basics</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="navbar">
+    <a class="logo" href="index.html">我的主页</a>
+    <nav>
+      <a href="index.html">首页</a>
+      <a class="active" href="todo.html">待办清单</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>待办清单</h1>
+      <p class="muted">输入内容并按回车或点击「添加」;勾选表示完成,点击 ✕ 删除。数据保存在浏览器 localStorage 中,刷新不会丢失。</p>
+
+      <!-- 表单:提交时添加待办 -->
+      <form id="todo-form" class="form-row">
+        <input type="text" id="todo-input" placeholder="要做什么?" autocomplete="off">
+        <button type="submit">添加</button>
+      </form>
+
+      <ul id="todo-list" class="todo-list"></ul>
+      <p id="empty-tip" class="empty-tip">还没有待办,添加一条吧 ✨</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    © 2025 · 由 webdev-basics 练习项目驱动
+  </footer>
+
+  <!-- 脚本放在 body 末尾,保证 DOM 已就绪 -->
+  <script src="todo.js"></script>
+</body>
+</html>

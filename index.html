@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<!-- 学习要点:文档结构、语义化标签、常用标签 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的个人主页 · webdev-basics</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 顶部导航:语义化标签 nav -->
+  <header class="navbar">
+    <a class="logo" href="index.html">我的主页</a>
+    <nav>
+      <a class="active" href="index.html">首页</a>
+      <a href="todo.html">待办清单</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- 简介卡片 -->
+    <section class="card">
+      <h1>你好,我是学习者 👋</h1>
+      <p class="muted">正在通过做小项目学习 Web 开发:HTML 负责结构, CSS 负责样式, JavaScript 负责交互。</p>
+    </section>
+
+    <!-- 技能卡片:Flexbox 布局演示 -->
+    <section class="card">
+      <h2>我正在学</h2>
+      <div class="skills">
+        <div class="skill-item">
+          <h3>HTML</h3>
+          <p>语义化标签、表单、页面结构</p>
+        </div>
+        <div class="skill-item">
+          <h3>CSS</h3>
+          <p>选择器、Flexbox、响应式布局</p>
+        </div>
+        <div class="skill-item">
+          <h3>JavaScript</h3>
+          <p>DOM 操作、事件、fetch 异步</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 目标列表:有序列表 ol 演示 -->
+    <section class="card">
+      <h2>我的学习目标</h2>
+      <ol>
+        <li>独立完成一个静态网站</li>
+        <li>用 JavaScript 写出可交互的页面</li>
+        <li>学会 React 并做一个完整项目</li>
+        <li>掌握 Node.js 后端,做出全栈应用</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="footer">
+    © 2025 · 由 webdev-basics 练习项目驱动
+  </footer>
+</body>
+</html>
