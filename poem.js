@@ -186,11 +186,12 @@ function cssToViewBox(mx, my) {
 
 // 圆周轨道:进度 p(0~1)→ 角度(0~2π)→ 圆上一点
 // 太阳走满一圈;月亮始终在直径对面(角度 + π),所以日月永不相遇、轮流当空
+// 注意:SVG 的 y 轴向下,所以 y 用 cy - R·sin(数学上方 = 画面上方)
 function orbitPoint(p, opposite = false) {
   const angle = p * Math.PI * 2 + (opposite ? Math.PI : 0);
   return {
     x: SETTINGS.orbitCx + SETTINGS.orbitR * Math.cos(angle),
-    y: SETTINGS.orbitCy + SETTINGS.orbitR * Math.sin(angle),
+    y: SETTINGS.orbitCy - SETTINGS.orbitR * Math.sin(angle),
   };
 }
 
@@ -214,7 +215,8 @@ function updateSun(now) {
     sunTarget.x = v.x;
     sunTarget.y = v.y;
     // 由鼠标位置反推角度 → 进度,松手后从对应位置继续自动走(无缝衔接)
-    const angle = Math.atan2(v.y - SETTINGS.orbitCy, v.x - SETTINGS.orbitCx);
+    // 注意与 orbitPoint 一致:y 轴向下,所以角度用 cy - v.y 计算
+    const angle = Math.atan2(SETTINGS.orbitCy - v.y, v.x - SETTINGS.orbitCx);
     progress = ((angle / (Math.PI * 2)) + 1) % 1;
   } else {
     // ② 自动模式:按当前进度算出太阳在轨道上的位置
