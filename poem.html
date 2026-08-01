@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 文字聚散 · 李贺《苦昼短》 学习要点:DOM 元素、transform 动画、requestAnimationFrame、鼠标事件 -->
+<!-- 文字聚散 · 李贺《苦昼短》 学习要点:DOM 元素、SVG 背景、transform 动画、requestAnimationFrame、鼠标事件 -->
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -7,13 +7,48 @@
   <title>文字聚散 · 苦昼短</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    /* 本页覆盖共享样式:深色背景、无滚动 */
+    /* 本页覆盖共享样式:无滚动、全屏 */
     body {
       margin: 0;
       overflow: hidden;
-      background: #10141f;
+      background: #1a1440;
       cursor: crosshair;
     }
+
+    /* ---------- 层级:背景(0) < 遮罩(1) < 文字(2) < 提示(3) ---------- */
+
+    /* SVG 黄昏背景:铺满全屏,垫在最底层 */
+    #sky {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* 压暗遮罩:中心区域变暗,让诗句更清楚,边缘保持黄昏通透 */
+    .dim {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(
+        ellipse at center,
+        rgba(12, 6, 20, 0.5) 0%,
+        rgba(12, 6, 20, 0.22) 60%,
+        rgba(12, 6, 20, 0) 100%
+      );
+    }
+
+    /* 舞台:装字的容器,盖在遮罩之上 */
+    #stage {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
     /* 每个字是一个完整的 <span>,绝对定位后用 transform 移动 */
     .char {
       position: absolute;
@@ -21,24 +56,33 @@
       left: 0;
       font-family: "STKaiti", "KaiTi", "SimSun", "Microsoft YaHei", serif;
       /* 字号由 poem.js 的 fitFontSize() 按窗口大小动态计算并内联设置 */
-      color: #f5d76e;
+      color: #ffe9a8; /* 提亮:偏暖的金色,贴合黄昏 */
       line-height: 1;
       user-select: none;
-      pointer-events: none; /* 字不挡鼠标 */
-      will-change: transform; /* 提示浏览器优化 transform 动画 */
-      text-shadow: 0 0 12px rgba(245, 215, 110, 0.35);
+      pointer-events: none;
+      will-change: transform;
+      /* 多层阴影 = 黑描边 + 光晕,保证任何背景下文字都清晰 */
+      text-shadow:
+        0 0 4px rgba(0, 0, 0, 0.9),
+        0 0 14px rgba(0, 0, 0, 0.75),
+        1px 1px 2px rgba(0, 0, 0, 0.95),
+        -1px 1px 2px rgba(0, 0, 0, 0.95),
+        1px -1px 2px rgba(0, 0, 0, 0.95),
+        -1px -1px 2px rgba(0, 0, 0, 0.95);
     }
+
     .hint {
       position: fixed;
       top: 16px;
       left: 0;
       right: 0;
       text-align: center;
-      color: rgba(245, 215, 110, 0.55);
+      color: rgba(255, 233, 168, 0.75);
       font-size: 0.9rem;
       letter-spacing: 0.3em;
       pointer-events: none;
-      z-index: 2;
+      z-index: 3;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     }
     .back {
       position: fixed;
@@ -46,21 +90,78 @@
       left: 0;
       right: 0;
       text-align: center;
-      z-index: 2;
+      z-index: 3;
     }
     .back a {
-      color: rgba(245, 215, 110, 0.5);
+      color: rgba(255, 233, 168, 0.7);
       text-decoration: none;
       font-size: 0.85rem;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     }
     .back a:hover {
-      color: #f5d76e;
+      color: #ffe9a8;
     }
   </style>
 </head>
 <body>
+  <!-- SVG 黄昏背景:天空渐变 + 夕阳 + 远山 + 树林剪影 -->
+  <svg id="sky" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <!-- 天空渐变:上深蓝紫 → 中紫 → 下橙红橙黄(黄昏) -->
+      <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#1a1440"/>
+        <stop offset="45%" stop-color="#5b2a5e"/>
+        <stop offset="72%" stop-color="#c7503a"/>
+        <stop offset="100%" stop-color="#f5a94e"/>
+      </linearGradient>
+      <!-- 夕阳光晕:内亮外透 -->
+      <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffd98a" stop-opacity="0.95"/>
+        <stop offset="55%" stop-color="#ff9d5c" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#ff9d5c" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <!-- 天空 -->
+    <rect width="1440" height="900" fill="url(#skyGrad)"/>
+
+    <!-- 夕阳:用 <g> 包住,JS 通过 transform 移动它 -->
+    <g id="sun">
+      <circle cx="1080" cy="430" r="230" fill="url(#sunGlow)"/>
+      <circle cx="1080" cy="430" r="72" fill="#ffdf8e"/>
+    </g>
+
+    <!-- 远山(两层,越远越浅) -->
+    <path d="M0,640 L150,480 L320,590 L500,440 L680,610 L860,470 L1040,620 L1220,480 L1440,600 L1440,900 L0,900 Z"
+          fill="#4a2a5e" opacity="0.9"/>
+    <path d="M0,700 L180,560 L380,670 L600,510 L800,680 L1020,540 L1240,690 L1440,580 L1440,900 L0,900 Z"
+          fill="#33204a"/>
+
+    <!-- 树林:底部一排松树剪影(近景,最深) -->
+    <g fill="#1d1026">
+      <polygon points="40,900 40,760 90,900"/>
+      <polygon points="120,900 120,810 160,900"/>
+      <polygon points="200,900 215,730 275,900"/>
+      <polygon points="300,900 310,790 355,900"/>
+      <polygon points="390,900 405,700 470,900"/>
+      <polygon points="500,900 510,820 550,900"/>
+      <polygon points="580,900 600,750 665,900"/>
+      <polygon points="690,900 700,800 740,900"/>
+      <polygon points="770,900 790,720 860,900"/>
+      <polygon points="890,900 900,810 945,900"/>
+      <polygon points="980,900 1000,740 1070,900"/>
+      <polygon points="1100,900 1110,800 1155,900"/>
+      <polygon points="1190,900 1210,710 1280,900"/>
+      <polygon points="1310,900 1320,790 1365,900"/>
+      <polygon points="1400,900 1410,760 1440,900"/>
+    </g>
+  </svg>
+
+  <!-- 压暗遮罩:让文字区域更清楚 -->
+  <div class="dim"></div>
+
   <div id="stage"></div>
-  <p class="hint">移动鼠标:字被推开 · 移开鼠标:字回到诗句</p>
+  <p class="hint">移动鼠标:字被推开 · 夕阳随你而行 · 移开:一切归位</p>
   <p class="back"><a href="index.html">← 返回首页</a></p>
   <script src="poem.js"></script>
 </body>

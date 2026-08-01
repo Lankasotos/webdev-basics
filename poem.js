@@ -107,7 +107,7 @@ function build() {
   });
 }
 
-/* ---------- 5. 更新所有字(核心物理,和粒子版思路一样) ---------- */
+/* ---------- 6. 更新所有字(核心物理:弹簧 + 排斥 + 阻尼) ---------- */
 function update() {
   for (const ch of chars) {
     // ① 弹簧力:指向"家"的力,距离越远拉得越狠 —— 这是"聚"
@@ -140,16 +140,50 @@ function update() {
   }
 }
 
-/* ---------- 6. 动画主循环 ---------- */
+/* ---------- 6. 夕阳跟随鼠标 ---------- */
+// 夕阳在 SVG 里的"家"位置(viewBox 坐标)和移动配置
+const SUN_HOME = { x: 1080, y: 430 };
+const SUN_RANGE = 200;   // 鼠标移动能带动夕阳的最大偏移量(px)
+const SUN_SMOOTH = 0.05; // 平滑系数(0~1,越小越"拖尾")
+
+const sun = document.getElementById("sun");
+const sunPos = { ...SUN_HOME };    // 夕阳当前实际位置
+const sunTarget = { ...SUN_HOME }; // 夕阳想去的位置
+
+function updateSun() {
+  if (mouse.active) {
+    // 把鼠标位置换算成"相对屏幕中心"的归一化偏移(-1 ~ 1)
+    const nx = (mouse.x - window.innerWidth / 2) / (window.innerWidth / 2);
+    const ny = (mouse.y - window.innerHeight / 2) / (window.innerHeight / 2);
+    // 目标位置 = 家的位置 + 鼠标偏移 × 幅度
+    sunTarget.x = SUN_HOME.x + nx * SUN_RANGE;
+    sunTarget.y = SUN_HOME.y + ny * SUN_RANGE;
+  } else {
+    // 鼠标不在窗口内:夕阳缓缓回到"家"
+    sunTarget.x = SUN_HOME.x;
+    sunTarget.y = SUN_HOME.y;
+  }
+  // 平滑插值:每帧向目标靠近一小步,产生"缓缓跟随"而不是瞬间跳变
+  sunPos.x += (sunTarget.x - sunPos.x) * SUN_SMOOTH;
+  sunPos.y += (sunTarget.y - sunPos.y) * SUN_SMOOTH;
+  // 把位置写回 SVG 的 transform(平移量 = 当前位置 - 家的位置)
+  sun.setAttribute(
+    "transform",
+    `translate(${sunPos.x - SUN_HOME.x}, ${sunPos.y - SUN_HOME.y})`
+  );
+}
+
+/* ---------- 7. 动画主循环 ---------- */
 function tick() {
   update();
+  updateSun();
   requestAnimationFrame(tick); // 下一帧再调用我,约 60 次/秒
 }
 
-/* ---------- 7. 窗口大小变化时重新排版 ---------- */
+/* ---------- 8. 窗口大小变化时重新排版 ---------- */
 window.addEventListener("resize", () => build());
 
-/* ---------- 8. 鼠标监听 ---------- */
+/* ---------- 9. 鼠标监听 ---------- */
 window.addEventListener("mousemove", (e) => {
   mouse.x = e.clientX;
   mouse.y = e.clientY;
@@ -159,6 +193,6 @@ window.addEventListener("mouseleave", () => {
   mouse.active = false; // 鼠标离开窗口:排斥力消失,字回家
 });
 
-/* ---------- 9. 启动 ---------- */
+/* ---------- 10. 启动 ---------- */
 build();
 tick();
