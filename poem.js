@@ -23,6 +23,14 @@ const SETTINGS = {
   padX: 40,            // 左右留白(px)
   padTop: 80,          // 上方留白:给顶部提示文字
   padBottom: 70,       // 下方留白:给底部返回链接
+
+  // ---- 太阳时光轴 ----
+  sunCycle: 40000,     // 太阳从左到右走完一圈的毫秒数(越大越慢)
+  sunXMin: 150,        // 太阳轨迹最左(viewBox x)
+  sunXMax: 1290,       // 太阳轨迹最右(viewBox x)
+  sunBaseY: 640,       // 弧线基准 y(贴近地平线)
+  sunArc: 200,         // 弧线拱起高度:中间高、两端低(像日行轨迹)
+  lineFade: 1.0,       // 每行诗淡化窗口(行距倍数;1.0 = 窗口与行距等宽,相邻行交叉淡化无缝)
 };
 
 /* ---------- 2. 诗句 ---------- */
@@ -43,7 +51,12 @@ const LINES = [
 /* ---------- 3. 舞台和鼠标状态 ---------- */
 const stage = document.getElementById("stage");
 const mouse = { x: -9999, y: -9999, active: false };
-let chars = []; // 每个字:{ el, homeX, homeY, x, y, vx, vy }
+let chars = []; // 每个字:{ el, homeX, homeY, x, y, vx, vy, row }
+
+/* ---- 时光轴状态 ---- */
+let progress = 0;      // 太阳进度 0→1(0=最左/日升,1=最右/日落)
+let holding = false;   // 鼠标是否按住(接管太阳)
+let linesAlpha = [];   // 每行诗的当前透明度(随太阳位置变化)
 
 /* ---------- 4. 第一步:算出装得下的字号 ---------- */
 // 思路:分别按"宽"和"高"算出一个最大字号,取较小者,保证两个方向都不溢出
@@ -72,6 +85,7 @@ function fitFontSize() {
 function build() {
   stage.innerHTML = ""; // 清空舞台(窗口大小变化时重建)
   chars = [];
+  linesAlpha = LINES.map(() => 0); // 每行从透明开始
 
   const fontSize = fitFontSize(); // 字号随窗口自适应
   const lineHeightPx = fontSize * SETTINGS.lineHeight;
@@ -96,6 +110,7 @@ function build() {
 
       chars.push({
         el,
+        row: i,                                // 属于第几行(用于随太阳显隐)
         homeX: startX + j * fontSize,            // "家"的 x
         homeY: startY + i * lineHeightPx,        // "家"的 y
         x: startX + j * fontSize,                // 当前 x(初始就在家)
@@ -140,14 +155,14 @@ function update() {
   }
 }
 
-/* ---------- 6. 夕阳跟随鼠标 ---------- */
-// 夕阳在 SVG 里的"家"位置(viewBox 坐标)
+/* ---------- 6. 时光轴:太阳运动 + 诗句显隐 ---------- */
+// 太阳在 SVG 里的"家"位置(viewBox 坐标):transform 以它为基准
 const SUN_HOME = { x: 1080, y: 430 };
 const SUN_SMOOTH = 0.05; // 平滑系数(0~1,越小越"拖尾")
 
 const sun = document.getElementById("sun");
-const sunPos = { ...SUN_HOME };    // 夕阳当前实际位置(viewBox 坐标)
-const sunTarget = { ...SUN_HOME }; // 夕阳想去的位置(viewBox 坐标)
+const sunPos = { ...SUN_HOME };    // 太阳当前实际位置(viewBox 坐标)
+const sunTarget = { ...SUN_HOME }; // 太阳想去的位置(viewBox 坐标)
 
 // 坐标系换算:鼠标坐标是 CSS 像素,夕阳在 SVG 的 viewBox 坐标系里
 // SVG 用 preserveAspectRatio="xMidYMid slice" 铺满屏幕:
@@ -164,16 +179,40 @@ function cssToViewBox(mx, my) {
   };
 }
 
-function updateSun() {
-  if (mouse.active) {
-    // 目标 = 鼠标指针所在的 viewBox 坐标 → 夕阳中心对齐指针
+// 根据进度(0~1)算出太阳的目标位置:沿"左低→中高→右低"的弧线走
+function sunTargetByProgress(p) {
+  return {
+    x: SETTINGS.sunXMin + p * (SETTINGS.sunXMax - SETTINGS.sunXMin),
+    y: SETTINGS.sunBaseY - Math.sin(p * Math.PI) * SETTINGS.sunArc,
+  };
+}
+
+// 每行诗的透明度:在它自己的时间窗内"渐入→保持→渐出"
+// 第 i 行的中心在 p = (i+0.5)/行数;离中心越远越透明;相邻行窗口重叠 → 交叉淡化
+function updateLinesOpacity() {
+  const n = LINES.length;
+  for (let i = 0; i < n; i++) {
+    const center = (i + 0.5) / n;
+    const dist = Math.abs(progress - center); // 太阳进度离该行中心有多远
+    const windowSize = SETTINGS.lineFade / n; // 该行完全可见的进度范围
+    // 距离超过窗口就完全透明;在窗口内按距离线性渐变到 1
+    linesAlpha[i] = Math.max(0, 1 - dist / windowSize);
+  }
+}
+
+function updateSun(now) {
+  if (holding) {
+    // ① 鼠标按住:接管太阳 —— 太阳中心对齐鼠标指针
     const v = cssToViewBox(mouse.x, mouse.y);
     sunTarget.x = v.x;
     sunTarget.y = v.y;
+    // 同步进度:松开鼠标后,太阳从当前位置继续自动走(无缝衔接)
+    progress = (v.x - SETTINGS.sunXMin) / (SETTINGS.sunXMax - SETTINGS.sunXMin);
   } else {
-    // 鼠标不在窗口内:夕阳缓缓回到"家"
-    sunTarget.x = SUN_HOME.x;
-    sunTarget.y = SUN_HOME.y;
+    // ② 自动模式:按当前进度算出弧线上的目标位置
+    const t = sunTargetByProgress(progress);
+    sunTarget.x = t.x;
+    sunTarget.y = t.y;
   }
   // 平滑插值:每帧向目标靠近一小步,产生"缓缓跟随"而不是瞬间跳变
   sunPos.x += (sunTarget.x - sunPos.x) * SUN_SMOOTH;
@@ -183,12 +222,29 @@ function updateSun() {
     "transform",
     `translate(${sunPos.x - SUN_HOME.x}, ${sunPos.y - SUN_HOME.y})`
   );
+
+  // 诗句透明度跟随太阳进度
+  updateLinesOpacity();
 }
 
 /* ---------- 7. 动画主循环 ---------- */
-function tick() {
+let startTime = null; // 自动模式的起点时间(用于计算进度)
+
+function tick(now) {
+  if (startTime === null) startTime = now;
+  if (!holding) {
+    // 只有自动模式才用真实时间推进进度(接管时进度由鼠标位置决定)
+    const elapsed = now - startTime;
+    progress = (elapsed / SETTINGS.sunCycle) % 1;
+  }
   update();
-  updateSun();
+  updateSun(now);
+
+  // 把每行的透明度应用到它的每一个字上
+  for (const ch of chars) {
+    ch.el.style.opacity = linesAlpha[ch.row];
+  }
+
   requestAnimationFrame(tick); // 下一帧再调用我,约 60 次/秒
 }
 
@@ -201,8 +257,19 @@ window.addEventListener("mousemove", (e) => {
   mouse.y = e.clientY;
   mouse.active = true;
 });
+window.addEventListener("mousedown", () => {
+  holding = true; // 按住鼠标:接管太阳
+});
+window.addEventListener("mouseup", () => {
+  if (holding) {
+    holding = false;
+    startTime = null; // 重置计时起点,松开后从当前位置继续自动走
+  }
+});
 window.addEventListener("mouseleave", () => {
   mouse.active = false; // 鼠标离开窗口:排斥力消失,字回家
+  holding = false;
+  startTime = null;
 });
 
 /* ---------- 10. 启动 ---------- */
