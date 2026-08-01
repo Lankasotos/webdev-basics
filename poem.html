@@ -131,6 +131,11 @@
         <stop offset="60%" stop-color="#9fb0e8" stop-opacity="0.3"/>
         <stop offset="100%" stop-color="#9fb0e8" stop-opacity="0"/>
       </radialGradient>
+      <!-- 月牙遮罩:白=显示,黑=挖掉。只作用在月面上,光晕不受影响 -->
+      <mask id="crescent" maskContentUnits="userSpaceOnUse">
+        <rect x="600" y="320" width="280" height="220" fill="#ffffff"/>
+        <circle cx="748" cy="452" r="48" fill="#000000"/>
+      </mask>
     </defs>
 
     <!-- 天空 -->
@@ -163,9 +168,12 @@
 
     <!-- 月亮:在太阳的直径对面,太阳落山时它升起 -->
     <g id="moon">
+      <!-- 光晕:放在 mask 外面,不被月牙遮罩切割 -->
       <circle cx="720" cy="430" r="150" fill="url(#moonGlow)"/>
-      <circle cx="720" cy="430" r="44" fill="#eef0ff"/>
-      <circle cx="706" cy="418" r="36" fill="#ccd2ec" opacity="0.55"/>
+      <!-- 月面:套上月牙遮罩,被黑圆挖去一角 -->
+      <g mask="url(#crescent)">
+        <circle cx="720" cy="430" r="44" fill="#eef0ff"/>
+      </g>
     </g>
 
     <!-- 远山(两层,越远越浅;画在日月之后,遮挡落山的太阳) -->

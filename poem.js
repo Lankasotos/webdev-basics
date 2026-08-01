@@ -210,25 +210,36 @@ function updateLinesOpacity() {
 
 function updateSun(now) {
   if (holding) {
-    // ① 鼠标按住:接管太阳 —— 太阳中心对齐鼠标指针
+    // ① 鼠标按住:接管"当前当空的天体" —— 鼠标在上方半圆控制太阳,下方半圆控制月亮
     const v = cssToViewBox(mouse.x, mouse.y);
-    sunTarget.x = v.x;
-    sunTarget.y = v.y;
     // 由鼠标位置反推角度 → 进度,松手后从对应位置继续自动走(无缝衔接)
     // 注意与 orbitPoint 一致:y 轴向下,所以角度用 cy - v.y 计算
     const angle = Math.atan2(SETTINGS.orbitCy - v.y, v.x - SETTINGS.orbitCx);
     progress = ((angle / (Math.PI * 2)) + 1) % 1;
+    if (progress < 0.5) {
+      // 太阳当空:鼠标拖太阳,月亮在对径轨道上
+      sunTarget.x = v.x;
+      sunTarget.y = v.y;
+      const m = orbitPoint(progress, true);
+      moonTarget.x = m.x;
+      moonTarget.y = m.y;
+    } else {
+      // 月亮当空:鼠标拖月亮,太阳在对径轨道上
+      moonTarget.x = v.x;
+      moonTarget.y = v.y;
+      const s = orbitPoint(progress, false);
+      sunTarget.x = s.x;
+      sunTarget.y = s.y;
+    }
   } else {
-    // ② 自动模式:按当前进度算出太阳在轨道上的位置
+    // ② 自动模式:按当前进度算出日月在轨道上的位置
     const t = orbitPoint(progress);
     sunTarget.x = t.x;
     sunTarget.y = t.y;
+    const m = orbitPoint(progress, true);
+    moonTarget.x = m.x;
+    moonTarget.y = m.y;
   }
-
-  // 月亮:永远在太阳的直径对面(太阳落山,月亮升起)
-  const m = orbitPoint(progress, true);
-  moonTarget.x = m.x;
-  moonTarget.y = m.y;
 
   // 平滑插值:每帧向目标靠近一小步,产生"缓缓跟随"而不是瞬间跳变
   sunPos.x += (sunTarget.x - sunPos.x) * SUN_SMOOTH;
